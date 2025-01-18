@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+
 import '../api_service.dart';
 
 class AddEditReviewScreen extends StatefulWidget {
   final String username;
   final Map<String, dynamic>? review;
 
-  const AddEditReviewScreen({Key? key, required this.username, this.review}) : super(key: key);
+  const AddEditReviewScreen({super.key, required this.username, this.review});
 
   @override
   _AddEditReviewScreenState createState() => _AddEditReviewScreenState();
@@ -35,7 +36,9 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     // Validasi input
     if (title.isEmpty || rating < 1 || rating > 10 || comment.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data tidak valid. Judul, komentar, dan rating (1-10) harus diisi.')),
+        const SnackBar(
+            content: Text(
+                'Data tidak valid. Judul, komentar, dan rating (1-10) harus diisi.')),
       );
       return;
     }
@@ -43,17 +46,28 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     bool success;
     if (widget.review == null) {
       // Tambah review baru
-      success = await _apiService.addReview(widget.username, title, rating, comment);
+      success = await _apiService.addReview(
+        widget.username,
+        title,
+        rating,
+        comment,
+      );
     } else {
       // Edit review
-      success = await _apiService.updateReview(widget.review!['_id'], title, rating, comment);
+      success = await _apiService.updateReview(
+        widget.username,
+        widget.review!['_id'],
+        title,
+        rating,
+        comment,
+      );
     }
 
     if (success) {
       Navigator.pop(context, true); // Berhasil, kembali ke layar sebelumnya
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan review')),
+        const SnackBar(content: Text('Gagal menyimpan review')),
       );
     }
   }
@@ -71,22 +85,22 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(labelText: 'Judul Film'),
+              decoration: const InputDecoration(labelText: 'Judul Film'),
               readOnly: isEditMode, // Nonaktifkan input jika dalam mode edit
             ),
             TextField(
               controller: _ratingController,
-              decoration: InputDecoration(labelText: 'Rating (1-10)'),
+              decoration: const InputDecoration(labelText: 'Rating (1-10)'),
               keyboardType: TextInputType.number,
             ),
             TextField(
               controller: _commentController,
-              decoration: InputDecoration(labelText: 'Komentar'),
+              decoration: const InputDecoration(labelText: 'Komentar'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveReview,
-              child: Text('Simpan'),
+              child: const Text('Simpan'),
             ),
           ],
         ),
