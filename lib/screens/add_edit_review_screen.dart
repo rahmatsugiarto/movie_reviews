@@ -9,7 +9,7 @@ class AddEditReviewScreen extends StatefulWidget {
   const AddEditReviewScreen({super.key, required this.username, this.review});
 
   @override
-  _AddEditReviewScreenState createState() => _AddEditReviewScreenState();
+  State<AddEditReviewScreen> createState() => _AddEditReviewScreenState();
 }
 
 class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
