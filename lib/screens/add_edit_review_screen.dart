@@ -1,4 +1,13 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'dart:io';
+
+import 'package:dartz/dartz.dart' as dartz;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+import 'package:movie_reviews/widgets/bottom_sheet_take_image.dart';
 import 'package:movie_reviews/widgets/custom_loading.dart';
 
 import '../api_service.dart';
@@ -18,6 +27,8 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
   final _ratingController = TextEditingController();
   final _commentController = TextEditingController();
   final _apiService = ApiService();
+  File? _dataImage;
+  String? _base64Image;
 
   @override
   void initState() {
@@ -26,6 +37,10 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
       _titleController.text = widget.review!['title'];
       _ratingController.text = widget.review!['rating'].toString();
       _commentController.text = widget.review!['comment'];
+
+      if (widget.review!['comment'] != "") {
+        _base64Image = widget.review!['image'];
+      }
     }
   }
 
@@ -37,15 +52,28 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     final rating = int.tryParse(_ratingController.text) ?? 0;
     final comment = _commentController.text.trim();
 
+    if (_dataImage != null) {
+      await compressImage(_dataImage!.readAsBytesSync()).then((compressBytes) {
+        _base64Image = base64Encode(compressBytes);
+      });
+    }
+
     // Validasi input
-    if (title.isEmpty || rating < 1 || rating > 10 || comment.isEmpty) {
+    if (title.isEmpty ||
+        rating < 1 ||
+        rating > 10 ||
+        comment.isEmpty ||
+        _dataImage == null ||
+        _base64Image == null) {
       // Dismiss loading
       CustomLoading.dismiss();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Data tidak valid. Judul, komentar, dan rating (1-10) harus diisi.')),
+          content: Text(
+            'Data tidak valid. Judul, komentar, rating (1-10) dan image harus diisi.',
+          ),
+        ),
       );
       return;
     }
@@ -58,6 +86,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
         title,
         rating,
         comment,
+        _base64Image,
       );
     } else {
       // Edit review
@@ -67,6 +96,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
         title,
         rating,
         comment,
+        _base64Image,
       );
     }
 
@@ -85,13 +115,88 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     }
   }
 
+  void _setFileImage({
+    required ImageSource source,
+  }) async {
+    final fileImage = await pickImage(source: source);
+
+    fileImage.fold(
+      (errorMsg) {
+        if (errorMsg != "Cancel Pick Image") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg)),
+          );
+        }
+      },
+      (data) async {
+        if (data != null) {
+          _dataImage = data;
+
+          setState(() {
+            _base64Image = base64Encode(data.readAsBytesSync());
+          });
+        }
+      },
+    );
+  }
+
+  Future<dartz.Either<String, File?>> pickImage({
+    required ImageSource source,
+  }) async {
+    try {
+      final image = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 30,
+      );
+
+      if (image == null) {
+        return const dartz.Left("Cancel Pick Image");
+      }
+      final File fileImage = File(image.path);
+
+      return dartz.Right(fileImage);
+    } on PlatformException catch (e) {
+      log('Failed to pick image: $e');
+      return dartz.Left("Failed to pick image: $e");
+    }
+  }
+
+  Future<List<int>> compressImage(
+    List<int> imageBytes, {
+    int targetWidth = 500,
+    int quality = 85,
+  }) async {
+    // Decode the image from the byte list
+    final image = img.decodeImage(Uint8List.fromList(imageBytes));
+
+    if (image == null) {
+      throw Exception("Failed to decode image.");
+    }
+
+    // Calculate the aspect ratio and target height to maintain the aspect ratio
+    final aspectRatio = image.width / image.height;
+    final targetHeight = (targetWidth / aspectRatio).round();
+
+    // Resize the image while maintaining the aspect ratio
+    final resizedImage = img.copyResize(
+      image,
+      width: targetWidth,
+      height: targetHeight,
+    );
+
+    // Compress the image by encoding it to a lower quality JPEG
+    final compressedImageBytes = img.encodeJpg(resizedImage, quality: quality);
+
+    return compressedImageBytes;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditMode = widget.review != null;
 
     return Scaffold(
       appBar: AppBar(title: Text(isEditMode ? 'Edit Review' : 'Tambah Review')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,6 +215,50 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
               controller: _commentController,
               decoration: const InputDecoration(labelText: 'Komentar'),
             ),
+            const SizedBox(
+              height: 20.0,
+            ),
+            Builder(builder: (context) {
+              if (_base64Image != null) {
+                return InkWell(
+                  onTap: () {
+                    BottomSheetTakeImage.show(
+                      context: context,
+                      title: "Upload Image",
+                      onFromCamera: () {
+                        _setFileImage(source: ImageSource.camera);
+                        Navigator.pop(context);
+                      },
+                      onFromFolder: () {
+                        _setFileImage(source: ImageSource.gallery);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                  child: Image.memory(
+                    base64Decode(_base64Image ?? ""),
+                    fit: BoxFit.cover,
+                  ),
+                );
+              }
+              return ElevatedButton(
+                onPressed: () {
+                  BottomSheetTakeImage.show(
+                    context: context,
+                    title: "Upload Image",
+                    onFromCamera: () {
+                      _setFileImage(source: ImageSource.camera);
+                      Navigator.pop(context);
+                    },
+                    onFromFolder: () {
+                      _setFileImage(source: ImageSource.gallery);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+                child: const Text("Upload Image"),
+              );
+            }),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveReview,

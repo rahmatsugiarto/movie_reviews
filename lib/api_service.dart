@@ -63,7 +63,12 @@ class ApiService {
   }
 
   Future<bool> addReview(
-      String username, String title, int rating, String comment) async {
+    String username,
+    String title,
+    int rating,
+    String comment,
+    String? image,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/reviews'),
@@ -72,7 +77,8 @@ class ApiService {
           'username': username,
           'title': title,
           'rating': rating,
-          'comment': comment
+          'comment': comment,
+          'image': image ?? ""
         }),
       );
       return response.statusCode == 201;
@@ -89,6 +95,7 @@ class ApiService {
     String title,
     int rating,
     String comment,
+    String? image,
   ) async {
     try {
       final response = await http.put(
@@ -99,6 +106,7 @@ class ApiService {
           'title': title,
           'rating': rating,
           'comment': comment,
+          'image': image
         }),
       );
       print('Response status: ${response.statusCode}');
