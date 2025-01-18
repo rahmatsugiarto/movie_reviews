@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'https://crudcrud.com/api/7f27486f21e94a7fad510553b2801221';
+  //! Bug Fix 1: Renew the baseUrl
+  static const String baseUrl =
+      'https://crudcrud.com/api/72383fffbe654653bbee156e87f015d5';
 
   Future<bool> registerUser(String username, String password) async {
     try {
