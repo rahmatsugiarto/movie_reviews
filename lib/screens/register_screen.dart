@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:movie_reviews/widgets/custom_loading.dart';
 
 import '../api_service.dart';
 
@@ -6,7 +7,7 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  _RegisterScreenState createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -15,6 +16,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _apiService = ApiService();
 
   void _register() async {
+    // Show loading
+    CustomLoading.show();
+
     // Periksa apakah username sudah terdaftar
     final usernameExists =
         await _apiService.checkUsernameExists(_usernameController.text);
@@ -25,6 +29,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content:
                 Text('Username sudah terdaftar. Silakan gunakan yang lain.')),
       );
+
+      // Dismiss loading
+      CustomLoading.dismiss();
       return;
     }
 
@@ -35,6 +42,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (success) {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
       );
@@ -46,6 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Navigasi ke halaman login
       Navigator.pop(context);
     } else {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registrasi gagal. Silakan coba lagi.')),
       );

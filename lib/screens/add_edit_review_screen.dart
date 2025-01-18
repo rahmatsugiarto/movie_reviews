@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:movie_reviews/widgets/custom_loading.dart';
 
 import '../api_service.dart';
 
@@ -29,12 +30,18 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
   }
 
   void _saveReview() async {
+    // Show loading
+    CustomLoading.show();
+
     final title = _titleController.text.trim();
     final rating = int.tryParse(_ratingController.text) ?? 0;
     final comment = _commentController.text.trim();
 
     // Validasi input
     if (title.isEmpty || rating < 1 || rating > 10 || comment.isEmpty) {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
@@ -64,8 +71,14 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     }
 
     if (success) {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       Navigator.pop(context, true); // Berhasil, kembali ke layar sebelumnya
     } else {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal menyimpan review')),
       );

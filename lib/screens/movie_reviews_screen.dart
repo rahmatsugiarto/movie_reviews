@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:movie_reviews/widgets/custom_loading.dart';
 
 import '../api_service.dart';
 import 'add_edit_review_screen.dart';
@@ -15,6 +16,7 @@ class MovieReviewsScreen extends StatefulWidget {
 class _MovieReviewsScreenState extends State<MovieReviewsScreen> {
   final _apiService = ApiService();
   List<dynamic> _reviews = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -23,17 +25,30 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> {
   }
 
   Future<void> _loadReviews() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final reviews = await _apiService.getReviews(widget.username);
     setState(() {
       _reviews = reviews;
+      _isLoading = false;
     });
   }
 
   void _deleteReview(String id) async {
+    // Show loading
+    CustomLoading.show();
+
     final success = await _apiService.deleteReview(id);
     if (success) {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       _loadReviews();
     } else {
+      // Dismiss loading
+      CustomLoading.dismiss();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal menghapus review')),
       );
@@ -61,9 +76,19 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> {
           ),
         ],
       ),
-      body: _reviews.isEmpty
-          ? const Center(child: Text('Belum ada review. Tambahkan sekarang!'))
-          : ListView.builder(
+      body: Builder(
+        builder: (context) {
+          if (_reviews.isEmpty) {
+            return const Center(
+                child: Text('Belum ada review. Tambahkan sekarang!'));
+          }
+
+          if (_isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!_isLoading) {
+            return ListView.builder(
               itemCount: _reviews.length,
               itemBuilder: (context, index) {
                 final review = _reviews[index];
@@ -98,7 +123,12 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> {
                   ),
                 );
               },
-            ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }

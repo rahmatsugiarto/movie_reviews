@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:movie_reviews/widgets/custom_loading.dart';
 
 import '../api_service.dart';
 import 'movie_reviews_screen.dart';
@@ -17,12 +18,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _apiService = ApiService();
 
   void _login() async {
+    // Show loading
+    CustomLoading.show();
+
     final success = await _apiService.loginUser(
       _usernameController.text,
       _passwordController.text,
     );
 
     if (success) {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -31,6 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
+      // Dismiss loading
+      CustomLoading.dismiss();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Login gagal. Silakan cek username/password.')),
