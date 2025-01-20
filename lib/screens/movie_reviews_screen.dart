@@ -37,19 +37,29 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen>
     CustomLoading.dismiss();
   }
 
-  void _toggleLike(String id, String title, int rating, String comment,
-      String? image, int like) async {
+  void _toggleLike(
+    String id,
+    String title,
+    int rating,
+    String comment,
+    String? image,
+    int like,
+  ) async {
+    CustomLoading.show();
     try {
       final success = await _apiService.updateReview(
           widget.username, id, title, rating, comment, image, like);
       if (success) {
+        CustomLoading.dismiss();
         _loadReviews(); // Refresh reviews after toggling like
       } else {
+        CustomLoading.dismiss();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Gagal mengubah status suka')),
         );
       }
     } catch (e) {
+      CustomLoading.dismiss();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Terjadi kesalahan.')), // Error fallback
       );
