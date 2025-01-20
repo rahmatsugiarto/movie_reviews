@@ -2,15 +2,17 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:dartz/dartz.dart' as dartz;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
+
 import 'package:image_picker/image_picker.dart';
-import 'package:movie_reviews/widgets/bottom_sheet_take_image.dart';
-import 'package:movie_reviews/widgets/custom_loading.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter/foundation.dart';
 
 import '../api_service.dart';
+import '../widgets/bottom_sheet_take_image.dart';
+import '../widgets/custom_loading.dart';
 
 class AddEditReviewScreen extends StatefulWidget {
   final String username;
@@ -27,7 +29,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
   final _ratingController = TextEditingController();
   final _commentController = TextEditingController();
   final _apiService = ApiService();
-  File? _dataImage;
+
   String? _base64Image;
 
   @override
@@ -38,13 +40,13 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
       _ratingController.text = widget.review!['rating'].toString();
       _commentController.text = widget.review!['comment'];
 
-      if (widget.review!['comment'] != "") {
+      if (widget.review!['image'] != null) {
         _base64Image = widget.review!['image'];
       }
     }
   }
 
-  void _saveReview() async {
+  Future<void> _saveReview() async {
     // Show loading
     CustomLoading.show();
 
@@ -52,35 +54,19 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     final rating = int.tryParse(_ratingController.text) ?? 0;
     final comment = _commentController.text.trim();
 
-    if (_dataImage != null) {
-      await compressImage(_dataImage!.readAsBytesSync()).then((compressBytes) {
-        _base64Image = base64Encode(compressBytes);
-      });
-    }
-
-    // Validasi input
-    if (title.isEmpty ||
-        rating < 1 ||
-        rating > 10 ||
-        comment.isEmpty ||
-        _dataImage == null ||
-        _base64Image == null) {
-      // Dismiss loading
+    // Validate input
+    if (title.isEmpty || rating < 1 || rating > 10 || comment.isEmpty || _base64Image == null) {
       CustomLoading.dismiss();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Data tidak valid. Judul, komentar, rating (1-10) dan image harus diisi.',
-          ),
-        ),
+        const SnackBar(content: Text('Semua data harus diisi dengan benar.')),
       );
       return;
     }
 
     bool success;
     if (widget.review == null) {
-      // Tambah review baru
+      // Add new review
       success = await _apiService.addReview(
         widget.username,
         title,
@@ -100,94 +86,67 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
       );
     }
 
+    CustomLoading.dismiss();
+
     if (success) {
-      // Dismiss loading
-      CustomLoading.dismiss();
-
-      Navigator.pop(context, true); // Berhasil, kembali ke layar sebelumnya
+      Navigator.pop(context, true);
     } else {
-      // Dismiss loading
-      CustomLoading.dismiss();
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan review')),
+        const SnackBar(content: Text('Gagal menyimpan review.')),
       );
     }
   }
 
-  void _setFileImage({
-    required ImageSource source,
-  }) async {
-    final fileImage = await pickImage(source: source);
+  Future<void> _setFileImage({required ImageSource source}) async {
+    try {
+      final pickedImage = await ImagePicker().pickImage(source: source);
+      if (pickedImage == null) return;
 
-    fileImage.fold(
-      (errorMsg) {
-        if (errorMsg != "Cancel Pick Image") {
+      if (kIsWeb) {
+        // Untuk Web: Gunakan `readAsBytes` langsung dari XFile
+        final imageBytes = await pickedImage.readAsBytes();
+        setState(() {
+          _base64Image = base64Encode(imageBytes);
+        });
+      } else {
+        // Untuk Mobile: Kompres dan ubah ke Base64
+        final file = File(pickedImage.path);
+        final compressedFile = await _compressImage(file);
+
+        if (compressedFile != null) {
+          final compressedBytes = await compressedFile.readAsBytes();
+          setState(() {
+            _base64Image = base64Encode(compressedBytes);
+          });
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMsg)),
+            const SnackBar(content: Text('Kompresi gambar gagal.')),
           );
         }
-      },
-      (data) async {
-        if (data != null) {
-          _dataImage = data;
-
-          setState(() {
-            _base64Image = base64Encode(data.readAsBytesSync());
-          });
-        }
-      },
-    );
-  }
-
-  Future<dartz.Either<String, File?>> pickImage({
-    required ImageSource source,
-  }) async {
-    try {
-      final image = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: 30,
-      );
-
-      if (image == null) {
-        return const dartz.Left("Cancel Pick Image");
       }
-      final File fileImage = File(image.path);
-
-      return dartz.Right(fileImage);
-    } on PlatformException catch (e) {
-      log('Failed to pick image: $e');
-      return dartz.Left("Failed to pick image: $e");
+    } catch (e) {
+      log('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
-  Future<List<int>> compressImage(
-    List<int> imageBytes, {
-    int targetWidth = 500,
-    int quality = 85,
-  }) async {
-    // Decode the image from the byte list
-    final image = img.decodeImage(Uint8List.fromList(imageBytes));
-
-    if (image == null) {
-      throw Exception("Failed to decode image.");
+  Future<File?> _compressImage(File file) async {
+    if (kIsWeb) {
+      // Tidak perlu kompresi di Web
+      return file;
+    } else {
+      final targetPath = file.path;
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: 80,
+        minWidth: 500,
+        minHeight: 500,
+      );
+      return compressedFile;
     }
-
-    // Calculate the aspect ratio and target height to maintain the aspect ratio
-    final aspectRatio = image.width / image.height;
-    final targetHeight = (targetWidth / aspectRatio).round();
-
-    // Resize the image while maintaining the aspect ratio
-    final resizedImage = img.copyResize(
-      image,
-      width: targetWidth,
-      height: targetHeight,
-    );
-
-    // Compress the image by encoding it to a lower quality JPEG
-    final compressedImageBytes = img.encodeJpg(resizedImage, quality: quality);
-
-    return compressedImageBytes;
   }
 
   @override
@@ -204,7 +163,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(labelText: 'Judul Film'),
-              readOnly: isEditMode, // Nonaktifkan input jika dalam mode edit
+              readOnly: isEditMode,
             ),
             TextField(
               controller: _ratingController,
@@ -215,13 +174,33 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
               controller: _commentController,
               decoration: const InputDecoration(labelText: 'Komentar'),
             ),
-            const SizedBox(
-              height: 20.0,
-            ),
-            Builder(builder: (context) {
-              if (_base64Image != null) {
-                return InkWell(
-                  onTap: () {
+            const SizedBox(height: 20),
+            Builder(
+              builder: (context) {
+                if (_base64Image != null) {
+                  return InkWell(
+                    onTap: () {
+                      BottomSheetTakeImage.show(
+                        context: context,
+                        title: "Upload Image",
+                        onFromCamera: () {
+                          _setFileImage(source: ImageSource.camera);
+                          Navigator.pop(context);
+                        },
+                        onFromFolder: () {
+                          _setFileImage(source: ImageSource.gallery);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                    child: Image.memory(
+                      base64Decode(_base64Image!),
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                }
+                return ElevatedButton(
+                  onPressed: () {
                     BottomSheetTakeImage.show(
                       context: context,
                       title: "Upload Image",
@@ -235,30 +214,10 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
                       },
                     );
                   },
-                  child: Image.memory(
-                    base64Decode(_base64Image ?? ""),
-                    fit: BoxFit.cover,
-                  ),
+                  child: const Text("Upload Image"),
                 );
-              }
-              return ElevatedButton(
-                onPressed: () {
-                  BottomSheetTakeImage.show(
-                    context: context,
-                    title: "Upload Image",
-                    onFromCamera: () {
-                      _setFileImage(source: ImageSource.camera);
-                      Navigator.pop(context);
-                    },
-                    onFromFolder: () {
-                      _setFileImage(source: ImageSource.gallery);
-                      Navigator.pop(context);
-                    },
-                  );
                 },
-                child: const Text("Upload Image"),
-              );
-            }),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveReview,
