@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
 import '../api_service.dart';
 import '../widgets/custom_loading.dart';
 import 'add_edit_review_screen.dart';
@@ -13,11 +15,10 @@ class MovieReviewsScreen extends StatefulWidget {
   State<MovieReviewsScreen> createState() => _MovieReviewsScreenState();
 }
 
-class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTickerProviderStateMixin {
+class _MovieReviewsScreenState extends State<MovieReviewsScreen>
+    with SingleTickerProviderStateMixin {
   final _apiService = ApiService();
   List<dynamic> _reviews = [];
-  bool _isLoading = false;
-
 
   @override
   void initState() {
@@ -26,19 +27,21 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
   }
 
   Future<void> _loadReviews() async {
-    setState(() {
-      _isLoading = true;
-    });
+    CustomLoading.show();
 
     final reviews = await _apiService.getReviews(widget.username);
     setState(() {
       _reviews = reviews;
-      _isLoading = false;
     });
+
+    CustomLoading.dismiss();
   }
-  void _toggleLike(String id,String title,int rating,String comment,String? image,int like) async {
+
+  void _toggleLike(String id, String title, int rating, String comment,
+      String? image, int like) async {
     try {
-      final success = await _apiService.updateReview(widget.username,id, title, rating, comment, image,like);
+      final success = await _apiService.updateReview(
+          widget.username, id, title, rating, comment, image, like);
       if (success) {
         _loadReviews(); // Refresh reviews after toggling like
       } else {
@@ -64,7 +67,8 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
       } else if (i - 0.5 == normalizedRating) {
         stars.add(const Icon(Icons.star_half, color: Colors.yellow, size: 20));
       } else {
-        stars.add(Icon(Icons.star_border, color: Colors.grey.shade400, size: 20));
+        stars.add(
+            Icon(Icons.star_border, color: Colors.grey.shade400, size: 20));
       }
     }
     return stars;
@@ -105,14 +109,16 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          if (_reviews.isEmpty && !_isLoading)
-            const Center(
+      body: Builder(
+        builder: (context) {
+          if (_reviews.isEmpty) {
+            return const Center(
               child: Text('Belum ada review. Tambahkan sekarang!'),
-            ),
-          if (_reviews.isNotEmpty)
-            ListView.builder(
+            );
+          }
+
+          if (_reviews.isNotEmpty) {
+            return ListView.builder(
               itemCount: _reviews.length,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               itemBuilder: (context, index) {
@@ -166,8 +172,8 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
                                   ),
                                   const SizedBox(height: 6),
                                   Row(
-                                    children: _buildStarRating(
-                                        review['rating']),
+                                    children:
+                                        _buildStarRating(review['rating']),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -187,7 +193,13 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
                           children: [
                             GestureDetector(
                               // add feature like
-                              onTap: () => _toggleLike(review['_id'],review['title'],review['rating'],review['comment'],review['image'],review['like'] == 1 ? 0 : 1),
+                              onTap: () => _toggleLike(
+                                  review['_id'],
+                                  review['title'],
+                                  review['rating'],
+                                  review['comment'],
+                                  review['image'],
+                                  review['like'] == 1 ? 0 : 1),
                               child: Row(
                                 children: [
                                   Icon(
@@ -206,11 +218,10 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        AddEditReviewScreen(
-                                          username: widget.username,
-                                          review: review,
-                                        ),
+                                    builder: (context) => AddEditReviewScreen(
+                                      username: widget.username,
+                                      review: review,
+                                    ),
                                   ),
                                 );
                                 if (result == true) _loadReviews();
@@ -227,15 +238,11 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
                   ),
                 );
               },
-            ),
-          if (_isLoading)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-        ],
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
