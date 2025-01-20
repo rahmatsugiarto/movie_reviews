@@ -17,22 +17,12 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
   final _apiService = ApiService();
   List<dynamic> _reviews = [];
   bool _isLoading = false;
-  late AnimationController _likeAnimationController;
+
 
   @override
   void initState() {
     super.initState();
-    _likeAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
     _loadReviews();
-  }
-
-  @override
-  void dispose() {
-    _likeAnimationController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadReviews() async {
@@ -46,35 +36,22 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
       _isLoading = false;
     });
   }
-
-  void _toggleLike(String movieId, String username) async {
-    final List<dynamic> likes = await _apiService.getLikeBy(movieId, username);
-    final totalLike = likes.length;
-    final int statusLike = likes.isNotEmpty ? likes.first['status_like'] : 0;
-    if (likes.length > 1) {
-      for (int i = 1; i < likes.length; i++) {
-        await _apiService.deleteLike(likes[i]['_id']);
+  void _toggleLike(String id,String title,int rating,String comment,String? image,int like) async {
+    try {
+      final success = await _apiService.updateReview(widget.username,id, title, rating, comment, image,like);
+      if (success) {
+        _loadReviews(); // Refresh reviews after toggling like
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengubah status suka')),
+        );
       }
-    }
-
-    final isLiked = statusLike > 0;
-
-    if (!isLiked) _likeAnimationController.forward(from: 0);
-
-    final success = isLiked && totalLike > 0
-        ? await _apiService.unlike(likes.first['_id'], movieId, username)
-        : !isLiked && totalLike > 0 ? await _apiService.like(likes.first['_id'], movieId, username)
-        : await _apiService.firstLike(movieId, username);
-
-    if (success) {
-      _loadReviews(); // Refresh data
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengubah status suka')),
+        const SnackBar(content: Text('Terjadi kesalahan.')), // Error fallback
       );
     }
   }
-
 
   List<Widget> _buildStarRating(int rating) {
     const int maxStars = 5;
@@ -209,20 +186,15 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen> with SingleTick
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             GestureDetector(
-                              onTap: () => _toggleLike(review['_id'],review['username']),
+                              // add feature like
+                              onTap: () => _toggleLike(review['_id'],review['title'],review['rating'],review['comment'],review['image'],review['like'] == 1 ? 0 : 1),
                               child: Row(
                                 children: [
-                                  ScaleTransition(
-                                    scale: Tween(begin: 1.0, end: 1.2)
-                                        .animate(CurvedAnimation(
-                                        parent: _likeAnimationController,
-                                        curve: Curves.easeOut)),
-                                    child: Icon(
-                                      review['username'] == widget.username
-                                          ? Icons.thumb_up
-                                          : Icons.thumb_up_outlined,
-                                      color: Colors.blue,
-                                    ),
+                                  Icon(
+                                    review['like'] == 1
+                                        ? Icons.thumb_up
+                                        : Icons.thumb_up_outlined,
+                                    color: Colors.blue,
                                   ),
                                   const SizedBox(width: 4),
                                 ],

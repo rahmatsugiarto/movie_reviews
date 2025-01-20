@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   //! Bug Fix 1: Renew the baseUrl
   static String baseUrl =
-      'https://crudcrud.com/api/f5ced915df424d68bee30687971ea188';
+      'https://crudcrud.com/api/be745623c1ae4b70ae7d6362c84ff947';
 
   Future<bool> registerUser(String username, String password) async {
     try {
@@ -78,7 +78,8 @@ class ApiService {
           'title': title,
           'rating': rating,
           'comment': comment,
-          'image': image ?? ""
+          'image': image ?? "",
+          'like': 0 // add variable like
         }),
       );
       return response.statusCode == 201;
@@ -96,6 +97,7 @@ class ApiService {
     int rating,
     String comment,
     String? image,
+    int like, // add variable like
   ) async {
     try {
       final response = await http.put(
@@ -106,7 +108,8 @@ class ApiService {
           'title': title,
           'rating': rating,
           'comment': comment,
-          'image': image
+          'image': image,
+          'like': like // add variable like
         }),
       );
       print('Response status: ${response.statusCode}');
@@ -121,89 +124,6 @@ class ApiService {
   Future<bool> deleteReview(String id) async {
     try {
       final response = await http.delete(Uri.parse('$baseUrl/reviews/$id'));
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Error deleting review: $e');
-      return false;
-    }
-  }
-
-  Future<bool> firstLike(String movieId, String user) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/like'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'movies_id': movieId,
-          'username': user,
-          'status_like': 1,
-        }),
-      );
-
-      return response.statusCode == 201; // Success on insert
-    } catch (e) {
-      print('Error baseUrl: $baseUrl/like');
-      return false;
-    }
-  }
-
-  Future<bool> unlike(String id, String movieId, String user) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/like/$id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'movies_id': movieId,
-          'username': user,
-          'status_like': 0,
-        }),
-      );
-
-      return response.statusCode == 200; // Success on update
-    } catch (e) {
-      print('Error baseUrl: $baseUrl/like');
-      return false;
-    }
-  }
-
-Future<bool> like(String id, String movieId, String user) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/like/$id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'movies_id': movieId,
-          'username': user,
-          'status_like': 1,
-        }),
-      );
-
-      return response.statusCode == 200; // Success on update
-    } catch (e) {
-      print('Error baseUrl: $baseUrl/like');
-      return false;
-    }
-  }
-
-  Future<List<dynamic>> getLikeBy(String movieId, String username) async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/like'));
-      if (response.statusCode == 200) {
-        final List<dynamic> likes = jsonDecode(response.body);
-        // Filter data berdasarkan movies_id dan username
-        return likes.where((like) =>
-        like['movies_id'] == movieId && like['username'] == username
-        ).toList();
-      }
-      return []; // Jika statusCode bukan 200
-    } catch (e) {
-      return []; // Jika ada kesalahan
-    }
-  }
-
-  Future<bool> deleteLike(String id) async {
-    try {
-      final response = await http.delete(Uri.parse('$baseUrl/like/$id'));
       return response.statusCode == 200;
     } catch (e) {
       print('Error deleting review: $e');

@@ -1,15 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter/foundation.dart';
-
 import '../api_service.dart';
 import '../widgets/bottom_sheet_take_image.dart';
 import '../widgets/custom_loading.dart';
@@ -29,6 +24,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
   final _ratingController = TextEditingController();
   final _commentController = TextEditingController();
   final _apiService = ApiService();
+  int like = 0; // add variable like
 
   String? _base64Image;
 
@@ -39,6 +35,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
       _titleController.text = widget.review!['title'];
       _ratingController.text = widget.review!['rating'].toString();
       _commentController.text = widget.review!['comment'];
+      like = widget.review!['like']; // add variable like
 
       if (widget.review!['image'] != null) {
         _base64Image = widget.review!['image'];
@@ -83,6 +80,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
         rating,
         comment,
         _base64Image,
+        like, // add variable like
       );
     }
 
