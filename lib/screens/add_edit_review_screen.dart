@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+
 import '../api_service.dart';
 import '../widgets/bottom_sheet_take_image.dart';
 import '../widgets/custom_loading.dart';
@@ -52,7 +56,11 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
     final comment = _commentController.text.trim();
 
     // Validate input
-    if (title.isEmpty || rating < 1 || rating > 10 || comment.isEmpty || _base64Image == null) {
+    if (title.isEmpty ||
+        rating < 1 ||
+        rating > 10 ||
+        comment.isEmpty ||
+        _base64Image == null) {
       CustomLoading.dismiss();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,15 +143,30 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
       // Tidak perlu kompresi di Web
       return file;
     } else {
-      final targetPath = file.path;
-      final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        file.absolute.path,
-        targetPath,
-        quality: 80,
-        minWidth: 500,
-        minHeight: 500,
-      );
-      return compressedFile;
+      try {
+        // Dapatkan direktori sementara untuk menyimpan file yang dikompresi
+        final tempDir = await getTemporaryDirectory();
+
+        // Buat nama file dengan "_compressed" dan pastikan menggunakan ekstensi jpg
+        final targetPath = path.join(
+          tempDir.path,
+          "${path.basenameWithoutExtension(file.path)}_compressed.jpg",
+        );
+
+        // Lakukan kompresi
+        final compressedFile = await FlutterImageCompress.compressAndGetFile(
+          file.absolute.path,
+          targetPath,
+          quality: 80,
+          minWidth: 500,
+          minHeight: 500,
+        );
+
+        return compressedFile != null ? File(compressedFile.path) : null;
+      } catch (e) {
+        log("Error compressing image: $e");
+        return null;
+      }
     }
   }
 
@@ -214,7 +237,7 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
                   },
                   child: const Text("Upload Image"),
                 );
-                },
+              },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
