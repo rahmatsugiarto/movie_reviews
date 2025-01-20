@@ -63,7 +63,6 @@ class _AddEditReviewScreenState extends State<AddEditReviewScreen> {
         rating < 1 ||
         rating > 10 ||
         comment.isEmpty ||
-        _dataImage == null ||
         _base64Image == null) {
       // Dismiss loading
       CustomLoading.dismiss();
