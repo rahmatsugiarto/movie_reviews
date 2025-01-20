@@ -201,25 +201,22 @@ class _MovieReviewsScreenState extends State<MovieReviewsScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            GestureDetector(
-                              // add feature like
-                              onTap: () => _toggleLike(
+                            IconButton(
+                              onPressed: () {
+                                _toggleLike(
                                   review['_id'],
                                   review['title'],
                                   review['rating'],
                                   review['comment'],
                                   review['image'],
-                                  review['like'] == 1 ? 0 : 1),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    review['like'] == 1
-                                        ? Icons.thumb_up
-                                        : Icons.thumb_up_outlined,
-                                    color: Colors.blue,
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
+                                  review['like'] == 1 ? 0 : 1,
+                                );
+                              },
+                              icon: Icon(
+                                review['like'] == 1
+                                    ? Icons.thumb_up
+                                    : Icons.thumb_up_outlined,
+                                color: Colors.blue,
                               ),
                             ),
                             IconButton(
