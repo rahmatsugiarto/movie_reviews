@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   //! Bug Fix 1: Renew the baseUrl
-  static const String baseUrl =
-      'https://crudcrud.com/api/72383fffbe654653bbee156e87f015d5';
+  static String baseUrl =
+      'https://crudcrud.com/api/be745623c1ae4b70ae7d6362c84ff947';
 
   Future<bool> registerUser(String username, String password) async {
     try {
@@ -78,7 +78,8 @@ class ApiService {
           'title': title,
           'rating': rating,
           'comment': comment,
-          'image': image ?? ""
+          'image': image ?? "",
+          'like': 0 // add variable like
         }),
       );
       return response.statusCode == 201;
@@ -96,6 +97,7 @@ class ApiService {
     int rating,
     String comment,
     String? image,
+    int like, // add variable like
   ) async {
     try {
       final response = await http.put(
@@ -106,7 +108,8 @@ class ApiService {
           'title': title,
           'rating': rating,
           'comment': comment,
-          'image': image
+          'image': image,
+          'like': like // add variable like
         }),
       );
       print('Response status: ${response.statusCode}');
